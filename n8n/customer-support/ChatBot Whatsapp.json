@@ -1,0 +1,494 @@
+{
+  "name": "ChatBot Whatsapp",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today's date: {{ $now.setZone('Asia/Karachi').format('YYYY-MM-DD') }}\nToday is: {{ $now.setZone('Asia/Karachi').format('cccc') }}\n\nUser message: {{ $('WhatsApp Trigger').item.json.messages[0].text.body }}\n{% if $('WhatsApp Trigger').item.json.messages[0].type == 'image' %}\nUser sent an image. Image URL: {{ $('WhatsApp Trigger').item.json.messages[0].image.link }}\n{% endif %}",
+        "options": {
+          "systemMessage": "You are a booking assistant for an indoor sports court. Be short and direct. Max 4 lines per reply unless it's a confirmation.\n\nCOURT HOURS: 6:00 AM – 4:00 AM (next day)\n\n=== PRICING ===\nPERIOD 1 - WITHOUT LIGHTS: 6:00 AM to 6:59 PM\nPERIOD 2 - WITH LIGHTS: 7:00 PM to 4:00 AM\n\nWeekday (Mon/Tue/Wed/Thu):\n- Period 1: Rs. 2,000/hr\n- Period 2: Rs. 2,500/hr\n\nWeekend (Fri/Sat/Sun):\n- Period 1: Rs. 3,000/hr\n- Period 2: Rs. 3,500/hr\n\n=== CALCULATION ===\n- Start >= 7PM: all Period 2. No split.\n- End <= 7PM: all Period 1. No split.\n- Start < 7PM AND end > 7PM: SPLIT at 7PM.\n\nEXAMPLES:\n✅ Sunday 5PM-9PM = 2hrs x Rs.3,000 + 2hrs x Rs.3,500 = Rs.13,000\n✅ Saturday 8PM-12AM = 4hrs x Rs.3,500 = Rs.14,000\n✅ Wednesday 6PM-9PM = 1hr x Rs.2,000 + 2hrs x Rs.2,500 = Rs.7,000\n\nDATE RULES:\n- Today's date/day given at top of every message.\n- Calculate future dates with plain arithmetic only.\n- NEVER show {{ }} to user.\n- Reject past dates/times.\n- Reject outside court hours.\n\nAVAILABILITY:\n- Check Google Sheets first, then Google Calendar.\n- Conflict if: start < existing end AND end > existing start.\n\n=== BOOKING FLOW (STRICT ORDER, NO SKIPPING) ===\n\nStep 1: Ask for date, start time, end time.\nStep 2: Calculate total amount.\nStep 3: Check availability.\nStep 4: If free, ask for name and contact number.\nStep 5: Ask: 'How would you like to pay?\n1. Full payment online (Rs.[total])\n2. Pay Rs.1,000 advance now, rest on the day'\nStep 6: WAIT for answer.\n\nIF FULL PAYMENT ONLINE:\n- Set: Advanced Amount = [total], Remaining Amount = 0\n- Set: Payment Status = 'Paid/Pending Verification'\n- Send account details:\n'Please transfer Rs.[total] to:\nAccount: 1234-5678-9012\nBank: Test Bank\nName: Calvrex Sports'\n- Then say: 'Please send a screenshot of your payment as proof.'\n- WAIT for screenshot/image from user.\n- Once received, note: 'Payment proof received.'\n- Store image URL in Payment Proof column.\n\nIF ADVANCE (Rs.1,000):\n- Set: Advanced Amount = 1000, Remaining Amount = [total - 1000]\n- Set: Payment Status = 'Advance Paid/Verification Pending'\n- Send account details:\n'Please transfer Rs.1,000 to:\nAccount: 1234-5678-9012\nBank: Test Bank\nName: Calvrex Sports\nRemaining Rs.[remaining] to be paid at the court.'\n- Then say: 'Please send a screenshot of your payment as proof.'\n- WAIT for screenshot/image from user.\n- Once received, note: 'Payment proof received.'\n- Store image URL in Payment Proof column.\n\nStep 7: Generate Booking ID: BK-[YYYYMMDD]-[4 random digits]\nStep 8: Log to Google Sheets (ALL columns).\nStep 9: Create Google Calendar event.\nStep 10: Send:\n✅ Booking Confirmed!\nBooking ID: [id]\nName: [name]\nDate: [date] ([day])\nTime: [start] – [end]\nContact: [number]\nTotal: Rs.[total]\nAdvance Paid: Rs.[advanced]\nRemaining: Rs.[remaining]\nStatus: [status]\n\nCRITICAL:\n- NEVER confirm booking before receiving payment screenshot.\n- NEVER skip Step 5.\n- NEVER log without all fields filled."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        576,
+        0
+      ],
+      "id": "173886be-e8b2-4375-a719-8168b55fd134",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=whatsapp-{{ $('WhatsApp Trigger').first().json.messages[0].from }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        448,
+        224
+      ],
+      "id": "10d87957-7329-4ac9-9b72-49a02ef55481",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "b2f8b1a85deb6d092874035185cdca3b412814f625a121ac27eb2045d9352d8a@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Calvrex ChatBot Bookings"
+        },
+        "start": "={{ $fromAI('start', 'Event start time in ISO 8601 format e.g. 2026-06-14T17:00:00') }}",
+        "end": "={{ $fromAI('end', 'Event end time in ISO 8601 format e.g. 2026-06-14T19:00:00') }}",
+        "additionalFields": {
+          "description": "={{ $fromAI('description', 'Details about the booking including name and contact number') }}",
+          "summary": "={{ $fromAI('summary', 'Booking title e.g. Indoor Booking - Ahmed') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        224
+      ],
+      "id": "ab088d2b-e657-4a01-8d06-e17883055454",
+      "name": "Create an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "xYKmTiNMxEXqCZHM",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "b2f8b1a85deb6d092874035185cdca3b412814f625a121ac27eb2045d9352d8a@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Calvrex ChatBot Bookings"
+        },
+        "limit": "={{ 10 }}",
+        "options": {
+          "orderBy": "startTime"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        224
+      ],
+      "id": "bc0514c5-6d41-4396-ac84-03d8ca4c1fe1",
+      "name": "Get availability in a calendar in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "xYKmTiNMxEXqCZHM",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Check existing bookings in Google Sheets for a specific date. Pass the date to check. Returns all bookings on that date. Use the Time column to detect time overlaps with the user's requested slot. A conflict exists if: requested start < existing end AND requested end > existing start.",
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk",
+          "mode": "list",
+          "cachedResultName": "Indoor Bookings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Bookings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Date",
+              "lookupValue": "={{ $fromAI('date', 'The date to check for existing bookings, e.g. 2026-06-14') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        832,
+        224
+      ],
+      "id": "25bc2c19-7f4d-4d29-a2f6-595c31ddc91e",
+      "name": "Check Bookings in Google Sheets",
+      "credentials": {
+        "googleApi": {
+          "id": "mgYclbJ3kJnejM33",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Log confirmed booking to Google Sheets. ALL fields required: Booking ID, Name, Date, Time, Contact Number, Amount (total), Payment Method (Cash or Online), Payment Status, Advanced Amount, Remaining Amount, Payment Proof (image URL or N/A), Amount Received (always empty).",
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk",
+          "mode": "list",
+          "cachedResultName": "Indoor Bookings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Bookings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ID68vg_-xeJq5SwauZ-mS9M24LhoPB9S6gwqf_-oVfk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $fromAI('name', 'Full name') }}",
+            "Date": "={{ $fromAI('date', 'Booking date e.g. 2026-06-21') }}",
+            "Time": "={{ $fromAI('time', 'Time slot e.g. 5:00 PM - 9:00 PM') }}",
+            "Contact Number": "={{ $fromAI('contact_number', 'Customer phone number') }}",
+            "Amount": "={{ $fromAI('amount', 'Total booking amount') }}",
+            "Booking ID": "={{ $fromAI('booking_id', 'Unique ID e.g. BK-20260621-4823') }}",
+            "Payment Method": "={{ $fromAI('payment_method', 'Cash or Online') }}",
+            "Payment Status": "={{ $fromAI('payment_status', 'Paid/Pending Verification or Advance Paid/Verification Pending or Pending') }}",
+            "Advanced Amount": "={{ $fromAI('advanced_amount', 'Amount paid online. 1000 if advance, full total if full payment, 0 if cash') }}",
+            "Remaining Amount": "={{ $fromAI('remaining_amount', '0 if full online, total minus 1000 if advance, full total if cash') }}",
+            "Payment Proof": "={{ $fromAI('payment_proof', 'Image URL or transaction reference. N/A if cash') }}",
+            "Amount Received": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Booking ID",
+              "displayName": "Booking ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Contact Number",
+              "displayName": "Contact Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Method",
+              "displayName": "Payment Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Status",
+              "displayName": "Payment Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Advanced Amount",
+              "displayName": "Advanced Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Remaining Amount",
+              "displayName": "Remaining Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Proof",
+              "displayName": "Payment Proof",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount Received",
+              "displayName": "Amount Received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        224
+      ],
+      "id": "d3d783cc-4cfd-4f30-8bc3-a68fa222fcb0",
+      "name": "Log booking to Google Sheets",
+      "credentials": {
+        "googleApi": {
+          "id": "mgYclbJ3kJnejM33",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        96,
+        0
+      ],
+      "id": "8e1e5c77-73da-4e9f-9d2f-083ad954a5d2",
+      "name": "WhatsApp Trigger",
+      "webhookId": "cb1bb0c3-9521-4b95-9b44-3727379466fb",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "sAPD7D503dkZig3j",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1153406027857824",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "textBody": "={{ $('AI Agent').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        0
+      ],
+      "id": "16542e43-9f07-48db-89e6-32840462fbf4",
+      "name": "Send message",
+      "webhookId": "f1c7323c-ad46-4600-a63a-9de3e7577daa",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "2s3veR66ouz5wJ44",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen-2.5-72b-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        320,
+        224
+      ],
+      "id": "306452fb-7dae-47ce-b16e-a72a0dbfb6cb",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "8HY8njmeEfDHuw0v",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get availability in a calendar in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Bookings in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log booking to Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "versionId": "63bb51ae-822d-440a-a801-6f1d89360206",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "f48b6e208e4d30c5046033aa8ef59c936aa53e1345caf69b94fd5657b276ce76"
+  },
+  "nodeGroups": [],
+  "id": "UjIf4ZhH4NrfNUDj",
+  "tags": []
+}
