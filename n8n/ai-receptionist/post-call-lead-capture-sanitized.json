@@ -1,0 +1,943 @@
+{
+  "name": "Emily Salon - Post-Call Lead Capture (with Notion)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "elevenlabs-post-call",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "ae15120a-8e34-43a6-a01a-04333d92f01f",
+      "name": "ElevenLabs Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        192
+      ],
+      "webhookId": "elevenlabs-post-call"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "conv-id",
+              "name": "conversation_id",
+              "value": "={{ $json.body?.data?.conversation_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "agent-id",
+              "name": "agent_id",
+              "value": "={{ $json.body?.data?.agent_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "caller-phone",
+              "name": "caller_phone",
+              "value": "={{ $json.body.data.analysis.data_collection_results.caller_phone.value }}",
+              "type": "string"
+            },
+            {
+              "id": "call-duration",
+              "name": "call_duration_seconds",
+              "value": "={{ $json.body?.data?.metadata?.call_duration_secs ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "transcript-summary",
+              "name": "transcript_summary",
+              "value": "={{ $json.body?.data?.analysis?.transcript_summary ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "caller-name",
+              "name": "caller_name",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.caller_name?.value ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "caller-email",
+              "name": "caller_email",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.caller_email?.value ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "service-requested",
+              "name": "service_requested",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.service_requested?.value ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "stylist-requested",
+              "name": "stylist_requested",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.stylist_requested?.value ?? $json.body?.data?.analysis?.data_collection_results?.stylish_requested?.value ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "appointment-booked",
+              "name": "appointment_booked",
+              "value": "={{ ($json.body?.data?.analysis?.data_collection_results?.appointment_booked?.value === true) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "appointment-datetime",
+              "name": "appointment_datetime",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.appointment_datetime?.value }}",
+              "type": "string"
+            },
+            {
+              "id": "booking-uid",
+              "name": "booking_uid",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.booking_uid?.value ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "call-intent",
+              "name": "call_intent",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.call_intent?.value }}",
+              "type": "string"
+            },
+            {
+              "id": "call-outcome",
+              "name": "call_outcome",
+              "value": "={{ $json.body?.data?.analysis?.data_collection_results?.call_outcome?.value }}",
+              "type": "string"
+            },
+            {
+              "id": "transcript-full",
+              "name": "transcript_full",
+              "value": "={{ $json.body?.data?.transcript ?? [] }}",
+              "type": "array"
+            },
+            {
+              "id": "analysis-full",
+              "name": "analysis_full",
+              "value": "={{ $json.body?.data?.analysis ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "metadata-full",
+              "name": "metadata_full",
+              "value": "={{ $json.body?.data?.metadata ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "client-id",
+              "name": "client_id",
+              "value": "={{ (function() { const agentMap = { 'agent_1401kqbvt6bzengrqcsjtazaqnsh': 'emily_salon' }; const agentId = $json.body?.data?.agent_id || ''; return agentMap[agentId] || agentId; })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e003b16e-497a-4940-90ab-322e3b4d5094",
+      "name": "Extract Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst sanitized = { ...item };\nsanitized.caller_email = (item.caller_email && item.caller_email.trim() !== '') ? item.caller_email.trim() : null;\nsanitized.caller_name = (item.caller_name && item.caller_name.trim() !== '') ? item.caller_name.trim() : 'Unknown Caller';\nsanitized.caller_phone = (item.caller_phone && String(item.caller_phone).trim() !== '') ? String(item.caller_phone).trim() : null;\nsanitized.service_requested = (item.service_requested && item.service_requested.trim() !== '') ? item.service_requested : null;\nsanitized.stylist_requested = (item.stylist_requested && item.stylist_requested.trim() !== '') ? item.stylist_requested : 'Any';\nsanitized.call_intent = (item.call_intent && item.call_intent.trim() !== '') ? item.call_intent : 'other';\nsanitized.call_outcome = (item.call_outcome && item.call_outcome.trim() !== '') ? item.call_outcome : 'no_outcome';\nreturn [{ json: sanitized }];"
+      },
+      "id": "fd29eaa7-3b9d-4e65-8038-c3f3f471fd16",
+      "name": "Sanitize Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "booking-check",
+              "leftValue": "={{ $json.appointment_booked }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7ccd1f9a-64ca-4b6c-acca-2788bdfa5122",
+      "name": "Was Booking Made?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "=emily_salon_leads",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=caller_name",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_name }}"
+            },
+            {
+              "fieldId": "=caller_phone",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_phone }}"
+            },
+            {
+              "fieldId": "=caller_email",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_email }}"
+            },
+            {
+              "fieldId": "=service_requested",
+              "fieldValue": "={{ $('Sanitize Data').item.json.service_requested }}"
+            },
+            {
+              "fieldId": "=stylist_requested",
+              "fieldValue": "={{ $('Sanitize Data').item.json.stylist_requested }}"
+            },
+            {
+              "fieldId": "=appointment_booked",
+              "fieldValue": "={{ $json.appointment_booked }}"
+            },
+            {
+              "fieldId": "=appointment_datetime",
+              "fieldValue": "={{ $('Sanitize Data').item.json.appointment_datetime }}"
+            },
+            {
+              "fieldId": "=booking_uid",
+              "fieldValue": "={{ $('Sanitize Data').item.json.booking_uid }}"
+            },
+            {
+              "fieldId": "=call_intent",
+              "fieldValue": "={{ $json.call_intent }}"
+            },
+            {
+              "fieldId": "=call_outcome",
+              "fieldValue": "={{ $json.call_outcome }}"
+            },
+            {
+              "fieldId": "=call_duration_seconds",
+              "fieldValue": "={{ $('Sanitize Data').item.json.call_duration_seconds }}"
+            },
+            {
+              "fieldId": "=transcript_summary",
+              "fieldValue": "={{ $('Sanitize Data').item.json.transcript_summary }}"
+            },
+            {
+              "fieldId": "=conversation_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.conversation_id }}"
+            },
+            {
+              "fieldId": "=agent_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.agent_id }}"
+            },
+            {
+              "fieldId": "=client_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.client_id }}"
+            }
+          ]
+        }
+      },
+      "id": "84780ee2-4661-4904-aed9-03221b2e83e2",
+      "name": "Insert Lead - Booked",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "DpSZc21LnA3phSQX",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "6abf4f2e-c6b7-4927-bded-13009f4724de",
+          "mode": "id"
+        },
+        "title": "={{ $('Sanitize Data').item.json.caller_name }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "=Phone|phone_number",
+              "phoneValue": "={{ $('Sanitize Data').item.json.caller_phone }}"
+            },
+            {
+              "key": "=Email|email",
+              "emailValue": "={{ $('Sanitize Data').item.json.caller_email }}",
+              "ignoreIfEmpty": true
+            },
+            {
+              "key": "=Service|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.service_requested }}",
+              "ignoreIfEmpty": true
+            },
+            {
+              "key": "=Stylist|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.stylist_requested }}"
+            },
+            {
+              "key": "=Status|status",
+              "statusValue": "=In progress"
+            },
+            {
+              "key": "=Appointment Date|date",
+              "ignoreIfEmpty": true,
+              "date": "={{ $('Sanitize Data').item.json.appointment_datetime }}"
+            },
+            {
+              "key": "=Booking Reference|rich_text",
+              "textContent": "={{ $('Sanitize Data').item.json.booking_uid }}"
+            },
+            {
+              "key": "=Call Intent|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.call_intent }}"
+            },
+            {
+              "key": "=Call Outcome|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.call_outcome }}"
+            },
+            {
+              "key": "=Call Duration (sec)|number",
+              "numberValue": "={{ $('Sanitize Data').item.json.call_duration_seconds }}"
+            },
+            {
+              "key": "=Call Summary|rich_text",
+              "textContent": "={{ $('Sanitize Data').item.json.transcript_summary }}"
+            },
+            {
+              "key": "=Conversation ID|rich_text",
+              "textContent": "={{ $('Sanitize Data').item.json.conversation_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1cba80b1-14f0-4706-93ad-e561835504bd",
+      "name": "Notion - Create Booking",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        0
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "4sMplLQF0mBxqWi2",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "9d542207-e889-4a89-a8cc-6f861c288d47",
+      "name": "Merge All Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1792,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cancel-check",
+              "leftValue": "={{ $('Sanitize Data').item.json.call_intent }}",
+              "rightValue": "cancel",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0705be85-4068-4f20-adeb-5e4025b1c130",
+      "name": "Was It a Cancellation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        896,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "emily_salon_leads",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "booking_uid",
+              "condition": "eq",
+              "keyValue": "={{ $('Sanitize Data').item.json.booking_uid }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "appointment_booked",
+              "fieldValue": "false"
+            },
+            {
+              "fieldId": "call_outcome",
+              "fieldValue": "cancelled"
+            },
+            {
+              "fieldId": "notes",
+              "fieldValue": "=Cancelled via call on {{ $now.format('yyyy-MM-dd HH:mm') }}"
+            },
+            {
+              "fieldId": "client_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.client_id }}"
+            }
+          ]
+        }
+      },
+      "id": "c08d8839-29c4-4bf7-8832-9896f4496f72",
+      "name": "Update Lead - Cancelled",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "DpSZc21LnA3phSQX",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "6abf4f2e-c6b7-4927-bded-13009f4724de",
+          "mode": "id"
+        },
+        "limit": 1,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Booking Reference|rich_text",
+              "condition": "equals",
+              "richTextValue": "={{ $('Sanitize Data').item.json.booking_uid }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "679edc70-9489-4302-a2aa-287ac80cab38",
+      "name": "Notion - Find Cancellation",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        192
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "4sMplLQF0mBxqWi2",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Done"
+            },
+            {
+              "key": "Call Outcome|select",
+              "selectValue": "cancelled"
+            },
+            {
+              "key": "Internal Notes|rich_text",
+              "textContent": "=Cancelled via call on {{ $now.format('yyyy-MM-dd HH:mm') }}"
+            },
+            {
+              "key": "Follow-up Needed|checkbox",
+              "checkboxValue": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "13391393-2853-4f14-831e-f0c7e6eba504",
+      "name": "Notion - Update Cancellation",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        192
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "4sMplLQF0mBxqWi2",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "emily_salon_leads",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "caller_name",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_name }}"
+            },
+            {
+              "fieldId": "caller_phone",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_phone }}"
+            },
+            {
+              "fieldId": "caller_email",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_email }}"
+            },
+            {
+              "fieldId": "service_requested",
+              "fieldValue": "={{ $('Sanitize Data').item.json.service_requested }}"
+            },
+            {
+              "fieldId": "stylist_requested",
+              "fieldValue": "={{ $('Sanitize Data').item.json.stylist_requested }}"
+            },
+            {
+              "fieldId": "appointment_booked",
+              "fieldValue": "false"
+            },
+            {
+              "fieldId": "call_intent",
+              "fieldValue": "={{ $('Sanitize Data').item.json.call_intent }}"
+            },
+            {
+              "fieldId": "call_outcome",
+              "fieldValue": "={{ $('Sanitize Data').item.json.call_outcome }}"
+            },
+            {
+              "fieldId": "call_duration_seconds",
+              "fieldValue": "={{ $('Sanitize Data').item.json.call_duration_seconds }}"
+            },
+            {
+              "fieldId": "transcript_summary",
+              "fieldValue": "={{ $('Sanitize Data').item.json.transcript_summary }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.conversation_id }}"
+            },
+            {
+              "fieldId": "agent_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.agent_id }}"
+            },
+            {
+              "fieldId": "client_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.client_id }}"
+            }
+          ]
+        }
+      },
+      "id": "1a161e77-5f9d-4bf7-91b7-fe04e1bfe314",
+      "name": "Insert Lead - Inquiry",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        384
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "DpSZc21LnA3phSQX",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "6abf4f2e-c6b7-4927-bded-13009f4724de",
+          "mode": "id"
+        },
+        "title": "={{ $('Sanitize Data').item.json.caller_name }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Phone|phone_number",
+              "phoneValue": "={{ $('Sanitize Data').item.json.caller_phone }}",
+              "ignoreIfEmpty": true
+            },
+            {
+              "key": "Email|email",
+              "emailValue": "={{ $('Sanitize Data').item.json.caller_email }}",
+              "ignoreIfEmpty": true
+            },
+            {
+              "key": "Service|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.service_requested }}",
+              "ignoreIfEmpty": true
+            },
+            {
+              "key": "Stylist|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.stylist_requested }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "Not started"
+            },
+            {
+              "key": "Call Intent|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.call_intent }}"
+            },
+            {
+              "key": "Call Outcome|select",
+              "selectValue": "={{ $('Sanitize Data').item.json.call_outcome }}"
+            },
+            {
+              "key": "Call Duration (sec)|number",
+              "numberValue": "={{ $('Sanitize Data').item.json.call_duration_seconds }}"
+            },
+            {
+              "key": "Call Summary|rich_text",
+              "textContent": "={{ $('Sanitize Data').item.json.transcript_summary }}"
+            },
+            {
+              "key": "Conversation ID|rich_text",
+              "textContent": "={{ $('Sanitize Data').item.json.conversation_id }}"
+            },
+            {
+              "key": "Follow-up Needed|checkbox",
+              "checkboxValue": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4a24a86b-d33b-473c-958a-88234c6a64a9",
+      "name": "Notion - Create Inquiry",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        384
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "4sMplLQF0mBxqWi2",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "call_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.conversation_id }}"
+            },
+            {
+              "fieldId": "caller_phone",
+              "fieldValue": "={{ $('Sanitize Data').item.json.caller_phone }}"
+            },
+            {
+              "fieldId": "transcript",
+              "fieldValue": "={{ JSON.stringify($('Sanitize Data').item.json.transcript_full) }}"
+            },
+            {
+              "fieldId": "analysis",
+              "fieldValue": "={{ JSON.stringify($('Sanitize Data').item.json.analysis_full) }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ JSON.stringify($('Sanitize Data').item.json.metadata_full) }}"
+            },
+            {
+              "fieldId": "client_id",
+              "fieldValue": "={{ $('Sanitize Data').item.json.client_id }}"
+            }
+          ]
+        }
+      },
+      "id": "9d614a65-b452-4a5d-9ece-4243099dc5c2",
+      "name": "Insert Call Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "DpSZc21LnA3phSQX",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"received\", \"conversation_id\": \"{{ $('Sanitize Data').item.json.conversation_id }}\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "315e398e-2c4d-4a6a-9a6a-02fa38757321",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        192
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ElevenLabs Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Data": {
+      "main": [
+        [
+          {
+            "node": "Was Booking Made?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was Booking Made?": {
+      "main": [
+        [
+          {
+            "node": "Insert Lead - Booked",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Was It a Cancellation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Lead - Booked": {
+      "main": [
+        [
+          {
+            "node": "Notion - Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion - Create Booking": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Paths": {
+      "main": [
+        [
+          {
+            "node": "Insert Call Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was It a Cancellation?": {
+      "main": [
+        [
+          {
+            "node": "Update Lead - Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Lead - Inquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead - Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Notion - Find Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion - Find Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Notion - Update Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion - Update Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Insert Lead - Inquiry": {
+      "main": [
+        [
+          {
+            "node": "Notion - Create Inquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion - Create Inquiry": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Insert Call Log": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "0539875c-85c4-468b-a3e1-625360169d8d",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "f48b6e208e4d30c5046033aa8ef59c936aa53e1345caf69b94fd5657b276ce76"
+  },
+  "nodeGroups": [],
+  "id": "WrPqBTn6m7GDB0bb",
+  "tags": []
+}
