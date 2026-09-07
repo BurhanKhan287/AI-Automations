@@ -1,0 +1,996 @@
+{
+  "name": "Calvrex Cold Email Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write ONE short, natural-sounding opening sentence (max 20 words) for a cold email to {{ $json.first_name }} at {{ $json.company }}.\n\nTheir industry is {{ $json.industry || 'B2B' }}.\n\nRules:\n- Sound human and curious, not salesy\n- Reference something specific about their company or role if possible\n- No \"I hope this finds you well\"\n- No greetings, just the opening observation/hook sentence\n- Return ONLY the sentence, nothing else",
+        "batching": {
+          "batchSize": 1,
+          "delayBetweenBatches": 3000
+        }
+      },
+      "id": "08897b25-4fbe-4d81-87e5-5c3dfd9c3da4",
+      "name": "🤖 AI Personalize Opening Line",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1984,
+        192
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        2064,
+        416
+      ],
+      "id": "0ce9cd92-7e1d-4f83-8bbe-da52ebbfc60d",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "xrUXk60FMjHv4rVp",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc",
+          "mode": "list",
+          "cachedResultName": "Temp leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "5d6e13fe-03e1-4b35-9413-5d353df3b644",
+      "name": "Get Leads from Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        864,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jBIjda46MaL9ixz2",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "maxItems": 100
+      },
+      "id": "9a360449-7e1c-4f80-b442-6d37a2c68665",
+      "name": "Limit",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.email + '_' + $json.category }}",
+        "options": {
+          "historySize": 10000
+        }
+      },
+      "id": "a452593e-d09e-4e91-ad27-2b8e1f3fdf48",
+      "name": "Remove Already-Emailed",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5258b9fc-9c74-4325-ae88-8e452cde4426",
+      "name": "Process One Lead at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1760,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead-email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Process One Lead at a Time').item.json.email }}"
+            },
+            {
+              "id": "lead-first-name",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $('Process One Lead at a Time').item.json.first_name }}"
+            },
+            {
+              "id": "email-subject",
+              "name": "email_subject",
+              "type": "string",
+              "value": "={{ $('Process One Lead at a Time').item.json.email_subject }}"
+            },
+            {
+              "id": "email-body",
+              "name": "email_body",
+              "type": "string",
+              "value": "={{ $('Process One Lead at a Time').item.json.email_body }}"
+            },
+            {
+              "id": "new-status",
+              "name": "new_status",
+              "type": "string",
+              "value": "={{ $('Process One Lead at a Time').item.json.new_status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2079c31-a471-4470-b7d2-f5dea035a2ca",
+      "name": "Write Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2336,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "Asher — Calvrex <hello@calvrex.com>",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.email_body }}",
+        "options": {
+          "appendAttribution": false,
+          "bccEmail": "hello@calvrex.com"
+        }
+      },
+      "id": "09624bf5-3e05-471c-ade8-0cc19d1a9980",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2560,
+        192
+      ],
+      "webhookId": "6028f84f-077a-4cec-8c00-f8111e008b78",
+      "credentials": {
+        "smtp": {
+          "id": "VC1kJ6VNW3l1B5xW",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "cachedResultName": "Temp leads",
+          "mode": "list",
+          "value": "1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "Sheet1",
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": true,
+              "display": true,
+              "displayName": "email",
+              "id": "email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "sent_date",
+              "id": "sent_date",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "email": "={{ $('Write Email').item.json.email }}",
+            "sent_date": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "status": "={{ $('Write Email').item.json.new_status }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "45acb6c6-5d5a-46bb-b110-bf9584992bfa",
+      "name": "Updating sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2784,
+        192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jBIjda46MaL9ixz2",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "id": "76f98e04-fa20-4a1c-91fb-0930815e118b",
+      "name": "Wait b/w each mail",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3008,
+        320
+      ],
+      "webhookId": "a4c360c0-1fd0-4ffe-aed6-57f283071268"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst results = [];\n\nfor (const item of $input.all()) {\n  const lead = item.json;\n  const status = (lead.status || '').trim();\n  const sentDate = lead.sent_date;\n  const company = lead.company || '';\n\n  if (status === 'replied' || status === 'follow_up_2') continue;\n  if (!lead.email) continue;\n\n  let daysSince = 999;\n  if (sentDate) {\n    const sent = new Date(sentDate);\n    daysSince = Math.floor((now - sent) / (1000 * 60 * 60 * 24));\n  }\n\n  let category, emailSubject, emailBody, newStatus;\n\n  if (!status || status === '') {\n    category = 'cold_email';\n    emailSubject = 'Quick question, ' + company;\n    emailBody = 'Hey ' + company + ',\\n\\nDo you ever miss calls when your team is busy with a client?\\n\\nWe built an AI receptionist that answers every call 24/7 \\u2014 books appointments, answers questions, and handles enquiries automatically. Salons using it are capturing 30-40% more bookings from calls they used to miss.\\n\\nWould it make sense to show you a quick demo this week?\\n\\nAsher\\nCalvrex\\nhttps://calvrex.com\\n\\nP.S. Not relevant? Just reply and I\\'ll remove you.';\n    newStatus = 'sent';\n  } else if (status === 'sent' && daysSince >= 3) {\n    category = 'follow_up_1';\n    emailSubject = 'Re: Quick question, ' + company;\n    emailBody = 'Hey ' + company + ',\\n\\nJust following up \\u2014 wanted to make sure this didn\\'t get buried.\\n\\nMissed calls are one of the biggest hidden revenue leaks for salons. Our AI receptionist fixes that automatically.\\n\\nWorth a 10-min chat?\\n\\nAsher\\nCalvrex';\n    newStatus = 'follow_up_1';\n  } else if (status === 'follow_up_1' && daysSince >= 5) {\n    category = 'follow_up_2';\n    emailSubject = 'Re: Quick question, ' + company;\n    emailBody = 'Hey ' + company + ',\\n\\nLast one from me \\u2014 if missed calls aren\\'t a priority right now, totally understand.\\n\\nIf things change and you want to see how the AI receptionist works, just reply and I\\'ll set up a demo.\\n\\nAsher\\nCalvrex';\n    newStatus = 'follow_up_2';\n  } else {\n    continue;\n  }\n\n  results.push({\n    json: {\n      ...lead,\n      category,\n      email_subject: emailSubject,\n      email_body: emailBody,\n      new_status: newStatus\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "06ae25ec-6ba1-48f0-887f-93b51f0dd8dd",
+      "name": "Categorize Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "4f6991a3-3a5f-4398-8114-485db6792713",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc",
+          "mode": "list",
+          "cachedResultName": "Temp leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 11030616,
+          "mode": "list",
+          "cachedResultName": "Location Queue",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit#gid=11030616"
+        },
+        "options": {}
+      },
+      "id": "629d7f73-9af7-4948-848f-c3637b74a2ff",
+      "name": "Read Location Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1376,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jBIjda46MaL9ixz2",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst nextCity = items.find(item => !item.json.status || item.json.status.trim() === '');\nif (nextCity) {\n  return [{ json: { city: nextCity.json.city, state: nextCity.json.state, has_city: true } }];\n}\nreturn [{ json: { has_city: false } }];"
+      },
+      "id": "4d22c313-79f2-4877-aed0-68f653725182",
+      "name": "Pick Next City",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.has_city }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true,
+              "id": "fb5c37d4-d5f7-4ec3-a237-c0250490b60a"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f33e521c-7433-4854-8eb9-e5b68ad1c8b0",
+      "name": "Has City to Scrape",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -928,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "YOUR_APIFY_API_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"searchStringsArray\": [\"hair salon in {{ $json.city }}, {{ $json.state }}\"], \"maxCrawledPlacesPerSearch\": 50, \"language\": \"en\", \"countryCode\": \"us\"}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "275a263d-873a-44b6-b0e9-ede0989dbb45",
+      "name": "Scrape Salons",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -704,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const bookingPlatforms = ['vagaro', 'booksy', 'fresha', 'mindbody', 'acuity', 'schedulicity', 'booker', 'salonbiz', 'styleseat', 'squareup', 'square.site', 'calendly', 'getsquire', 'boulevard', 'glossgenius', 'zoca'];\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const place = item.json;\n  const website = (place.website || '').toLowerCase();\n\n  if (bookingPlatforms.some(p => website.includes(p))) continue;\n  if (!place.phone) continue;\n\n  const name = place.title || '';\n\n  results.push({\n    json: {\n      first_name: name,\n      email: '',\n      company: name,\n      industry: 'salon',\n      phone: place.phone || '',\n      website: place.website || '',\n      status: '',\n      sent_date: ''\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "695d9a39-32d2-4ea3-842f-b7a554560fda",
+      "name": "Format Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "cachedResultName": "Temp leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit?usp=drivesdk",
+          "mode": "list",
+          "value": "1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc/edit#gid=0",
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sent_date",
+              "displayName": "sent_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false,
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "d17f148f-1cd8-405e-b53c-01535413f8e9",
+      "name": "Save New Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jBIjda46MaL9ixz2",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "cachedResultName": "Temp leads",
+          "mode": "list",
+          "value": "1aVwMwJTMKIdBssgeckdvIzoGsS1TRYc8a7nO9buDxjc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "Location Queue",
+          "mode": "list",
+          "value": 11030616
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "city"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": true,
+              "display": true,
+              "displayName": "city",
+              "id": "city",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "scraped_date",
+              "id": "scraped_date",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "city": "={{ $('Pick Next City').first().json.city }}",
+            "scraped_date": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "status": "done"
+          }
+        },
+        "options": {}
+      },
+      "id": "6ae316e5-52f1-405d-904d-6415c0dc3c61",
+      "name": "Mark City Done",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jBIjda46MaL9ixz2",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "f4d77f49-ec63-4b87-a537-b5690563b7b2",
+      "name": "Skip Scraping",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        640,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "16b011b7-a6d5-4bcc-a306-4217d2d869d2",
+      "name": "Loop Salons for Email",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.website && $json.website.trim() !== '' && $json.website.startsWith('http') ? $json.website : $json.website && $json.website.trim() !== '' ? 'https://' + $json.website : 'https://example.com' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "timeout": 8000
+        }
+      },
+      "id": "143aad35-f038-4c52-96d7-561a050e2a7f",
+      "name": "Fetch Salon Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -32,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Loop Salons for Email').item.json;\nlet html = '';\ntry {\n  const inp = $input.first();\n  html = inp.json.data || inp.json.body || inp.json.html || '';\n  if (typeof html !== 'string') html = JSON.stringify(html);\n} catch(e) { html = ''; }\n\nconst emailRegex = /[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}/g;\nconst found = [...new Set(html.match(emailRegex) || [])].filter(e =>\n  e.includes('@') &&\n  !e.includes('example') && !e.includes('wix') &&\n  !e.includes('sentry') && !e.includes('schema') &&\n  !e.includes('.png') && !e.includes('.jpg') &&\n  !e.includes('wordpress') && !e.includes('jquery') &&\n  !e.includes('@2x') && e.split('@')[1].includes('.')\n);\n\nreturn [{ json: { ...lead, email: found[0] || '' } }];"
+      },
+      "id": "0ab6a521-bbde-4ae2-8320-ff9639939fb7",
+      "name": "Extract Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🤖 AI Personalize Opening Line": {
+      "main": [
+        [
+          {
+            "node": "Write Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🤖 AI Personalize Opening Line",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Remove Already-Emailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Already-Emailed": {
+      "main": [
+        [
+          {
+            "node": "Process One Lead at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One Lead at a Time": {
+      "main": [
+        [],
+        [
+          {
+            "node": "🤖 AI Personalize Opening Line",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Updating sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Updating sheet": {
+      "main": [
+        [
+          {
+            "node": "Wait b/w each mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait b/w each mail": {
+      "main": [
+        [
+          {
+            "node": "Process One Lead at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Leads from Sheet": {
+      "main": [
+        [
+          {
+            "node": "Categorize Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Leads": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Location Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Location Queue": {
+      "main": [
+        [
+          {
+            "node": "Pick Next City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Next City": {
+      "main": [
+        [
+          {
+            "node": "Has City to Scrape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has City to Scrape": {
+      "main": [
+        [
+          {
+            "node": "Scrape Salons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Salons": {
+      "main": [
+        [
+          {
+            "node": "Format Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Leads": {
+      "main": [
+        [
+          {
+            "node": "Mark City Done",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Salons for Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark City Done": {
+      "main": [
+        [
+          {
+            "node": "Get Leads from Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Scraping": {
+      "main": [
+        [
+          {
+            "node": "Get Leads from Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Leads": {
+      "main": [
+        [
+          {
+            "node": "Save New Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Salons for Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Salons for Email": {
+      "main": [
+        [
+          {
+            "node": "Mark City Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Salon Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Salon Website": {
+      "main": [
+        [
+          {
+            "node": "Extract Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email": {
+      "main": [
+        [
+          {
+            "node": "Save New Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "6e430425-58a6-49df-bacd-0e020fcfb5fc",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f48b6e208e4d30c5046033aa8ef59c936aa53e1345caf69b94fd5657b276ce76"
+  },
+  "nodeGroups": [],
+  "id": "akpejegeOJSKvuge",
+  "tags": []
+}
