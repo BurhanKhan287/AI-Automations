@@ -1,0 +1,23 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Credential files
+credentials.json
+secrets.json
+*.pem
+*.key
+*.p12
+
+# n8n local data and credentials
+.n8n/
+
+# Local configuration
+config.local.json
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
